@@ -2103,8 +2103,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
 
         consumePendingUpdateOperations();
         if (mAdapter != null) {
+            //这里重新赋值为0
             mReusableIntPair[0] = 0;
             mReusableIntPair[1] = 0;
+            //子控件消耗多少事件，由自己决定
             scrollStep(x, y, mReusableIntPair);
             consumedX = mReusableIntPair[0];
             consumedY = mReusableIntPair[1];
@@ -2114,9 +2116,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         if (!mItemDecorations.isEmpty()) {
             invalidate();
         }
-
+        //这里也重新赋值为0
         mReusableIntPair[0] = 0;
         mReusableIntPair[1] = 0;
+        //子控件处理后，又将剩下的事件传递给父控件
         dispatchNestedScroll(consumedX, consumedY, unconsumedX, unconsumedY, mScrollOffset,
                 type, mReusableIntPair);
         unconsumedX -= mReusableIntPair[0];
@@ -2754,15 +2757,16 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         if (velocityX == 0 && velocityY == 0) {
             return flingX != 0 || flingY != 0;
         }
-
+        //返回false，子控件才能处理fling
         if (!dispatchNestedPreFling(velocityX, velocityY)) {
             final boolean canScroll = canScrollHorizontal || canScrollVertical;
+            //将fling效果传递给父控件
             dispatchNestedFling(velocityX, velocityY, canScroll);
 
             if (mOnFlingListener != null && mOnFlingListener.onFling(velocityX, velocityY)) {
                 return true;
             }
-
+            //子控件在处理fling效果
             if (canScroll) {
                 int nestedScrollAxis = ViewCompat.SCROLL_AXIS_NONE;
                 if (canScrollHorizontal) {
@@ -2771,6 +2775,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                 if (canScrollVertical) {
                     nestedScrollAxis |= ViewCompat.SCROLL_AXIS_VERTICAL;
                 }
+                //通知父控件开始fling事件，
                 startNestedScroll(nestedScrollAxis, TYPE_NON_TOUCH);
 
                 velocityX = Math.max(-mMaxFlingVelocity, Math.min(velocityX, mMaxFlingVelocity));
@@ -3648,6 +3653,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
 
             case MotionEvent.ACTION_UP: {
                 mVelocityTracker.clear();
+                //当手指抬起的时，结束事件传递
                 stopNestedScroll(TYPE_TOUCH);
             }
             break;
@@ -3749,6 +3755,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                 if (canScrollVertically) {
                     nestedScrollAxis |= ViewCompat.SCROLL_AXIS_VERTICAL;
                 }
+                //查找嵌套滑动的父控件，并通知父控件嵌套滑动开始。这里默认是设置的竖直方向
                 startNestedScroll(nestedScrollAxis, TYPE_TOUCH);
             }
             break;
@@ -3805,12 +3812,14 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                     mReusableIntPair[1] = 0;
                     dx -= releaseHorizontalGlow(dx, e.getY());
                     dy -= releaseVerticalGlow(dy, e.getX());
-
+                    //将事件传递给父控件，并记录父控件消耗的距离。
+                    //dy与dx分别为子控件竖直与水平方向上的距离，int[] mScrollConsumed竖直用于记录父控件消耗的距离
                     if (dispatchNestedPreScroll(
                             canScrollHorizontally ? dx : 0,
                             canScrollVertically ? dy : 0,
                             mReusableIntPair, mScrollOffset, TYPE_TOUCH
                     )) {
+                        //mReusableIntPair是父控件的消耗，如果消耗了，dx，dy会减去
                         dx -= mReusableIntPair[0];
                         dy -= mReusableIntPair[1];
                         // Updated the nested offsets
@@ -3822,7 +3831,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
 
                     mLastTouchX = x - mScrollOffset[0];
                     mLastTouchY = y - mScrollOffset[1];
-
+                    //接着给子控件处理
                     if (scrollByInternal(
                             canScrollHorizontally ? dx : 0,
                             canScrollVertically ? dy : 0,
@@ -3849,6 +3858,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                         ? -mVelocityTracker.getXVelocity(mScrollPointerId) : 0;
                 final float yvel = canScrollVertically
                         ? -mVelocityTracker.getYVelocity(mScrollPointerId) : 0;
+                //具体处理fling的方法
                 if (!((xvel != 0 || yvel != 0) && fling((int) xvel, (int) yvel))) {
                     setScrollState(SCROLL_STATE_IDLE);
                 }
@@ -3874,6 +3884,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         if (mVelocityTracker != null) {
             mVelocityTracker.clear();
         }
+        //注意这里stop的是带了参数的
         stopNestedScroll(TYPE_TOUCH);
         releaseGlows();
     }

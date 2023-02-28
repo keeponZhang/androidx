@@ -20,6 +20,7 @@ package androidx.core.view;
 import static androidx.core.view.ViewCompat.TYPE_NON_TOUCH;
 import static androidx.core.view.ViewCompat.TYPE_TOUCH;
 
+import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
 
@@ -146,11 +147,15 @@ public class NestedScrollingChildHelper {
             // Already in progress
             return true;
         }
+        //判断子控件是否支持嵌套滑动
         if (isNestedScrollingEnabled()) {
+            //获取当前的view的父控件
             ViewParent p = mView.getParent();
             View child = mView;
+            //判断当前父控件是否支持嵌套滑动(父控件的onStartNestedScroll来判断是否支持嵌套滑动)
             while (p != null) {
                 if (ViewParentCompat.onStartNestedScroll(p, child, mView, axes, type)) {
+                    //返回值的作用体现在这里
                     setNestedScrollingParentForType(type, p);
                     ViewParentCompat.onNestedScrollAccepted(p, child, mView, axes, type);
                     return true;
@@ -255,7 +260,7 @@ public class NestedScrollingChildHelper {
                     consumed[0] = 0;
                     consumed[1] = 0;
                 }
-
+                //调用父控件的onNestedScroll方法(最终会调用父控件的onNestedScroll)
                 ViewParentCompat.onNestedScroll(parent, mView,
                         dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, type, consumed);
 
@@ -297,9 +302,11 @@ public class NestedScrollingChildHelper {
      *
      * @return true if the parent consumed any of the nested scroll
      */
+    //会先判断获取当前嵌套滑动的父控件。如果父控件不为null且支持嵌套滑动，那么接下来会调用ViewParentCompat.onNestedPreScroll（）
     public boolean dispatchNestedPreScroll(int dx, int dy, @Nullable int[] consumed,
             @Nullable int[] offsetInWindow, @NestedScrollType int type) {
         if (isNestedScrollingEnabled()) {
+            //获取当前嵌套滑动的父控件，如果为null，直接返回(只有onStartNestedScroll(返回true，这里才会被赋值，否则为null)
             final ViewParent parent = getNestedScrollingParentForType(type);
             if (parent == null) {
                 return false;
@@ -319,6 +326,7 @@ public class NestedScrollingChildHelper {
                 }
                 consumed[0] = 0;
                 consumed[1] = 0;
+                //调用父控件的onNestedPreScroll处理事件
                 ViewParentCompat.onNestedPreScroll(parent, mView, dx, dy, consumed, type);
 
                 if (offsetInWindow != null) {

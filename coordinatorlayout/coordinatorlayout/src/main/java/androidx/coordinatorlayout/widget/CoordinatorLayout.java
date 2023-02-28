@@ -255,7 +255,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     public void setOnHierarchyChangeListener(OnHierarchyChangeListener onHierarchyChangeListener) {
         mOnHierarchyChangeListener = onHierarchyChangeListener;
     }
-
+    //CoordainatorLayout在onAttachedToWindow中使用了ViewTreeObserver，并设置了绘制前监听器OnPreDrawListener
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -479,15 +479,17 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         final int action = ev.getActionMasked();
 
         MotionEvent cancelEvent = null;
-
+        //获取内部的控件集合，并按照z轴进行排序
         final List<View> topmostChildList = mTempList1;
         getTopSortedChildren(topmostChildList);
 
         // Let topmost child views inspect first
         final int childCount = topmostChildList.size();
+        //获取所有子view
         for (int i = 0; i < childCount; i++) {
             final View child = topmostChildList.get(i);
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+            //获取子类的Behavior
             final Behavior b = lp.getBehavior();
 
             if ((intercepted || newBlock) && action != MotionEvent.ACTION_DOWN) {
@@ -495,14 +497,17 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                 // If the event is "down" then we don't have anything to cancel yet.
                 if (b != null) {
                     if (cancelEvent == null) cancelEvent = obtainCancelEvent(ev);
+                    //调用拦截方法
                     performEvent(b, child, cancelEvent, type);
                 }
                 continue;
             }
 
             if (!newBlock && !intercepted && b != null) {
+                //调用behavior的onInterceptTouchEvent，如果拦截就拦截
                 intercepted = performEvent(b, child, ev, type);
                 if (intercepted) {
+                    //注意这里，比较重要找到第一个behavior对象，并赋值
                     mBehaviorTouchView = child;
                     // If a behavior intercepted an event then send cancel events to all the prior
                     // behaviors.
@@ -537,7 +542,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         if (cancelEvent != null) {
             cancelEvent.recycle();
         }
-
+//是否拦截与CoordinatorLayout中子view的behavior有关
         return intercepted;
     }
 
@@ -567,7 +572,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         if (action == MotionEvent.ACTION_DOWN) {
             resetTouchBehaviors();
         }
-
+        //在CoordainatorLayout的的onInterceptTouchEvent方法中，内部其实是调用了performIntercept来处理是否拦截事件
         final boolean intercepted = performIntercept(ev, TYPE_ON_INTERCEPT);
 
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
@@ -646,6 +651,8 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         return mKeylines[index];
     }
 
+    //parseBehavior方法其实很简单，就是根据相应的Behavior全限定名称，通过反射调用其构造函数(自定义Behavior的时候，一定要写构造函数）
+    // ，并实例化其对象。当然实例化Behavior的方法不止一种
     @SuppressWarnings("unchecked")
     static Behavior parseBehavior(Context context, AttributeSet attrs, String name) {
         if (TextUtils.isEmpty(name)) {
@@ -864,6 +871,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
 
             final Behavior b = lp.getBehavior();
+            //调用Behavior的测量方法。
             if (b == null || !b.onMeasureChild(this, child, childWidthMeasureSpec, keylineWidthUsed,
                     childHeightMeasureSpec, 0)) {
                 onMeasureChild(child, childWidthMeasureSpec, keylineWidthUsed,
@@ -950,7 +958,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
             final Behavior behavior = lp.getBehavior();
-
+            //获取子控件的Behavior方法，并调用其onLayoutChild方法判断子控件是否需要自己布局
             if (behavior == null || !behavior.onLayoutChild(this, child, layoutDirection)) {
                 onLayoutChild(child, layoutDirection);
             }
@@ -1338,6 +1346,16 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
      *
      * @param type the type of event which has caused this call
      */
+    /**
+     * 观察代码，我们发现程序中使用了一个名为mDependencySortedChildren的集合，通过遍历该集合，我们可以获取集合中控件的LayoutParam，
+     * 得到LayoutParam后，我们可以继续获取相应的Behavior。并调用其layoutDependsOn方法找到所依赖的控件，如果找到了当前控件所依赖的另一控件，
+     * 那么就调用Behavior中的onDependentViewChanged方法。
+     *
+     * 链接：https://juejin.cn/post/6844903904623214599
+     * 来源：稀土掘金
+     * 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+     * @param type
+     */
     @SuppressWarnings("unchecked")
     final void onChildViewsChanged(@DispatchChangeEvent final int type) {
         final int layoutDirection = ViewCompat.getLayoutDirection(this);
@@ -1345,7 +1363,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         final Rect inset = acquireTempRect();
         final Rect drawRect = acquireTempRect();
         final Rect lastDrawRect = acquireTempRect();
-
+        //获取内部的所有的子控件
         for (int i = 0; i < childCount; i++) {
             final View child = mDependencySortedChildren.get(i);
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
@@ -1353,7 +1371,6 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                 // Do not try to update GONE child views in pre draw updates.
                 continue;
             }
-
             // Check child views before for anchor
             for (int j = 0; j < i; j++) {
                 final View checkChild = mDependencySortedChildren.get(j);
@@ -1401,17 +1418,18 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                 }
                 recordLastChildRect(child, drawRect);
             }
-
+            //再次获取内部的所有的子控件
             // Update any behavior-dependent views for the change
             for (int j = i + 1; j < childCount; j++) {
                 final View checkChild = mDependencySortedChildren.get(j);
                 final LayoutParams checkLp = (LayoutParams) checkChild.getLayoutParams();
                 final Behavior b = checkLp.getBehavior();
-
+                //调用当前子控件的Behavior的layoutDependsOn方法判断是否依赖
                 if (b != null && b.layoutDependsOn(this, checkChild, child)) {
                     if (type == EVENT_PRE_DRAW && checkLp.getChangedAfterNestedScroll()) {
                         // If this is from a pre-draw and we have already been changed
                         // from a nested scroll, skip the dispatch and reset the flag
+                        //检查当前控件的嵌套滑动的标志位，如果为true,表示已经嵌套滑动过了，那么就跳过
                         checkLp.resetChangedAfterNestedScroll();
                         continue;
                     }
@@ -1421,10 +1439,12 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                         case EVENT_VIEW_REMOVED:
                             // EVENT_VIEW_REMOVED means that we need to dispatch
                             // onDependentViewRemoved() instead
+                            //当类型为EVENT_VIEW_REMOVED时，表示该控件移除，我们要通知依赖该控件的其他控件，该控件已经被移除了
                             b.onDependentViewRemoved(this, checkChild, child);
                             handled = true;
                             break;
                         default:
+                            // 如果依赖，那么就会走当前子控件Behavior中的onDependentViewChanged方法。
                             // Otherwise we dispatch onDependentViewChanged()
                             handled = b.onDependentViewChanged(this, checkChild, child);
                             break;
@@ -1433,6 +1453,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                     if (type == EVENT_NESTED_SCROLL) {
                         // If this is from a nested scroll, set the flag so that we may skip
                         // any resulting onPreDraw dispatch (if needed)
+                        //如果当前是嵌套滑动，那么就需要设置该标志位为true,方便跳过OnPreDraw方法
                         checkLp.setChangedAfterNestedScroll(handled);
                     }
                 }
@@ -1788,7 +1809,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             int nestedScrollAxes) {
         return onStartNestedScroll(child, target, nestedScrollAxes, ViewCompat.TYPE_TOUCH);
     }
-
+    //最终会调用CoordinatorLayout的嵌套滑动方法
     @Override
     @SuppressWarnings("unchecked")
     public boolean onStartNestedScroll(@NonNull View child, @NonNull View target,
@@ -1798,6 +1819,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         final int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             final View view = getChildAt(i);
+            //如果当前控件隐藏，则不传递
             if (view.getVisibility() == View.GONE) {
                 // If it's GONE, don't dispatch
                 continue;
@@ -1805,9 +1827,13 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
             final Behavior viewBehavior = lp.getBehavior();
             if (viewBehavior != null) {
+                //判断Behavior是否接受嵌套滑动事件
                 final boolean accepted = viewBehavior.onStartNestedScroll(this, view, child,
                         target, axes, type);
                 handled |= accepted;
+                //设置当前子控件接受接受嵌套滑动
+                //如果当前Behavior接受嵌套滑动事件（accepted = true)，那么就会调用lp.setNestedScrollAccepted(type, accepted),这段代码非常重要，
+                // 会影响Behavior后续的嵌套方法的执行(onNestedScrollAccepted)
                 lp.setNestedScrollAccepted(type, accepted);
             } else {
                 lp.setNestedScrollAccepted(type, false);
@@ -1832,6 +1858,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         for (int i = 0; i < childCount; i++) {
             final View view = getChildAt(i);
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
+            //在该方法中增加了if (!lp.isNestedScrollAccepted(type))的判断，也就是说只有Behavior的onStartNestedScroll方法返回true的时候，该方法才会执行。
             if (!lp.isNestedScrollAccepted(type)) {
                 continue;
             }
@@ -1904,6 +1931,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
 
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
+            //同样的，在onNestedScroll方法中，也会判断当前控件对应Behavior是否接受嵌套滑动事件，如果接受就调用对应方法
             if (!lp.isNestedScrollAccepted(type)) {
                 continue;
             }
@@ -2048,6 +2076,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     class OnPreDrawListener implements ViewTreeObserver.OnPreDrawListener {
         @Override
         public boolean onPreDraw() {
+            //发现其内部调用了onChildViewsChanged(EVENT_PRE_DRAW);方法
             onChildViewsChanged(EVENT_PRE_DRAW);
             return true;
         }
@@ -2279,6 +2308,16 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          *
          * @see #onDependentViewChanged(CoordinatorLayout, View, View)
          */
+        /**
+         * 确定一个控件（childView1)依赖另外一个控件(childView2)的时候，是通过layoutDependsOn这个方法。其中child是依赖对象(childView1)，而dependency是被依赖对象(childView2)
+         * ，该方法的返回值是判断是否依赖对应view。如果返回true。那么表示依赖。反之不依赖。一般情况下，在我们自定义Behavior时，我们需要重写该方法。当layoutDependsOn方法返回true时，
+         * 后面的onDependentViewChanged与onDependentViewRemoved方法才会调用。
+         *
+         * @param parent
+         * @param child
+         * @param dependency
+         * @return
+         */
         public boolean layoutDependsOn(@NonNull CoordinatorLayout parent, @NonNull V child,
                 @NonNull View dependency) {
             return false;
@@ -2309,6 +2348,19 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          * @param dependency the dependent view that changed
          * @return true if the Behavior changed the child view's size or position, false otherwise
          */
+        /**
+         * 当一个控件（childView1)所依赖的另一个控件(childView2)位置、大小发生改变的时候，该方法会调用。其中该方法的返回值，是由childView1来决定的
+         * ，如果childView1在接受到childView2的改变通知后，childView1的位置或大小发生改变，那么就返回true,反之返回false
+         *
+         * 作者：AndyJennifer
+         * 链接：https://juejin.cn/post/6844903904623214599
+         * 来源：稀土掘金
+         * 著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
+         * @param parent
+         * @param child
+         * @param dependency
+         * @return
+         */
         public boolean onDependentViewChanged(@NonNull CoordinatorLayout parent, @NonNull V child,
                 @NonNull View dependency) {
             return false;
@@ -2328,6 +2380,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          * @param child the child view to manipulate
          * @param dependency the dependent view that has been removed
          */
+        //当一个控件（childView1)所依赖的另一个控件(childView2)被删除的时候，该方法会调用。
         public void onDependentViewRemoved(@NonNull CoordinatorLayout parent, @NonNull V child,
                 @NonNull View dependency) {
         }
@@ -2920,6 +2973,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                     R.styleable.CoordinatorLayout_Layout_layout_dodgeInsetEdges, 0);
             mBehaviorResolved = a.hasValue(
                     R.styleable.CoordinatorLayout_Layout_layout_behavior);
+            //会通过AttributeSet（xml中声明的标签)来判断是否声明了layout_behavior，如果声明了，就调用parseBehavior方法来实例化Behavior对象
             if (mBehaviorResolved) {
                 mBehavior = parseBehavior(context, attrs, a.getString(
                         R.styleable.CoordinatorLayout_Layout_layout_behavior));

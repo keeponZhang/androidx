@@ -108,6 +108,12 @@ public interface NestedScrollingChild {
      * @see #dispatchNestedPreScroll(int, int, int[], int[])
      * @see #dispatchNestedScroll(int, int, int, int, int[])
      */
+    /**
+     * 开启一个嵌套滑动
+     *
+     * @param axes 支持的嵌套滑动方法，分为水平方向，竖直方向，或不指定
+     * @return 如果返回true, 表示当前子控件已经找了一起嵌套滑动的view
+     */
     boolean startNestedScroll(@ScrollAxis int axes);
 
     /**
@@ -116,6 +122,9 @@ public interface NestedScrollingChild {
      * <p>Calling this method when a nested scroll is not currently in progress is harmless.</p>
      *
      * @see #startNestedScroll(int)
+     */
+    /**
+     * 子控件停止嵌套滑动
      */
     void stopNestedScroll();
 
@@ -129,6 +138,36 @@ public interface NestedScrollingChild {
      */
     boolean hasNestedScrollingParent();
 
+    /**
+     * Dispatch one step of a nested scroll in progress before this view consumes any portion of it.
+     *
+     * <p>Nested pre-scroll events are to nested scroll events what touch intercept is to touch.
+     * <code>dispatchNestedPreScroll</code> offers an opportunity for the parent view in a nested
+     * scrolling operation to consume some or all of the scroll operation before the child view
+     * consumes it.</p>
+     *
+     * @param dx Horizontal scroll distance in pixels
+     * @param dy Vertical scroll distance in pixels
+     * @param consumed Output. If not null, consumed[0] will contain the consumed component of dx
+     *                 and consumed[1] the consumed dy.
+     * @param offsetInWindow Optional. If not null, on return this will contain the offset
+     *                       in local view coordinates of this view from before this operation
+     *                       to after it completes. View implementations may use this to adjust
+     *                       expected input coordinate tracking.
+     * @return true if the parent consumed some or all of the scroll delta
+     * @see #dispatchNestedScroll(int, int, int, int, int[])
+     */
+    /**
+     * 在子控件滑动前，将事件分发给父控件，由父控件判断消耗多少
+     *
+     * @param dx             水平方向嵌套滑动的子控件想要变化的距离 dx<0 向右滑动 dx>0 向左滑动
+     * @param dy             垂直方向嵌套滑动的子控件想要变化的距离 dy<0 向下滑动 dy>0 向上滑动
+     * @param consumed       子控件传给父控件数组，用于存储父控件水平与竖直方向上消耗的距离，consumed[0] 水平消耗的距离，consumed[1] 垂直消耗的距离
+     * @param offsetInWindow 子控件在当前window的偏移量
+     * @return 如果返回true, 表示父控件已经消耗了
+     */
+    boolean dispatchNestedPreScroll(int dx, int dy, @Nullable int[] consumed,
+                                    @Nullable int[] offsetInWindow);
     /**
      * Dispatch one step of a nested scroll in progress.
      *
@@ -152,50 +191,18 @@ public interface NestedScrollingChild {
      * @return true if the event was dispatched, false if it could not be dispatched.
      * @see #dispatchNestedPreScroll(int, int, int[], int[])
      */
+    /**
+     * 当父控件消耗事件后，子控件处理后，又继续将事件分发给父控件,由父控件判断是否消耗剩下的距离。
+     *
+     * @param dxConsumed     水平方向嵌套滑动的子控件滑动的距离(消耗的距离)
+     * @param dyConsumed     垂直方向嵌套滑动的子控件滑动的距离(消耗的距离)
+     * @param dxUnconsumed   水平方向嵌套滑动的子控件未滑动的距离(未消耗的距离)
+     * @param dyUnconsumed   垂直方向嵌套滑动的子控件未滑动的距离(未消耗的距离)
+     * @param offsetInWindow 子控件在当前window的偏移量
+     * @return 如果返回true, 表示父控件又继续消耗了
+     */
     boolean dispatchNestedScroll(int dxConsumed, int dyConsumed,
             int dxUnconsumed, int dyUnconsumed, @Nullable int[] offsetInWindow);
-
-    /**
-     * Dispatch one step of a nested scroll in progress before this view consumes any portion of it.
-     *
-     * <p>Nested pre-scroll events are to nested scroll events what touch intercept is to touch.
-     * <code>dispatchNestedPreScroll</code> offers an opportunity for the parent view in a nested
-     * scrolling operation to consume some or all of the scroll operation before the child view
-     * consumes it.</p>
-     *
-     * @param dx Horizontal scroll distance in pixels
-     * @param dy Vertical scroll distance in pixels
-     * @param consumed Output. If not null, consumed[0] will contain the consumed component of dx
-     *                 and consumed[1] the consumed dy.
-     * @param offsetInWindow Optional. If not null, on return this will contain the offset
-     *                       in local view coordinates of this view from before this operation
-     *                       to after it completes. View implementations may use this to adjust
-     *                       expected input coordinate tracking.
-     * @return true if the parent consumed some or all of the scroll delta
-     * @see #dispatchNestedScroll(int, int, int, int, int[])
-     */
-    boolean dispatchNestedPreScroll(int dx, int dy, @Nullable int[] consumed,
-            @Nullable int[] offsetInWindow);
-
-    /**
-     * Dispatch a fling to a nested scrolling parent.
-     *
-     * <p>This method should be used to indicate that a nested scrolling child has detected
-     * suitable conditions for a fling. Generally this means that a touch scroll has ended with a
-     * {@link VelocityTracker velocity} in the direction of scrolling that meets or exceeds
-     * the {@link ViewConfiguration#getScaledMinimumFlingVelocity() minimum fling velocity}
-     * along a scrollable axis.</p>
-     *
-     * <p>If a nested scrolling child view would normally fling but it is at the edge of
-     * its own content, it can use this method to delegate the fling to its nested scrolling
-     * parent instead. The parent may optionally consume the fling or observe a child fling.</p>
-     *
-     * @param velocityX Horizontal fling velocity in pixels per second
-     * @param velocityY Vertical fling velocity in pixels per second
-     * @param consumed true if the child consumed the fling, false otherwise
-     * @return true if the nested scrolling parent consumed or otherwise reacted to the fling
-     */
-    boolean dispatchNestedFling(float velocityX, float velocityY, boolean consumed);
 
     /**
      * Dispatch a fling to a nested scrolling parent before it is processed by this view.
@@ -227,5 +234,41 @@ public interface NestedScrollingChild {
      * @param velocityY Vertical fling velocity in pixels per second
      * @return true if a nested scrolling parent consumed the fling
      */
+    /**
+     * 当子控件产生fling滑动时，判断父控件是否处拦截fling，如果父控件处理了fling，那子控件就没有办法处理fling了。
+     *
+     * @param velocityX 水平方向上的速度 velocityX > 0  向左滑动，反之向右滑动
+     * @param velocityY 竖直方向上的速度 velocityY > 0  向上滑动，反之向下滑动
+     * @return 如果返回true, 表示父控件拦截了fling
+     */
     boolean dispatchNestedPreFling(float velocityX, float velocityY);
+
+    /**
+     * Dispatch a fling to a nested scrolling parent.
+     *
+     * <p>This method should be used to indicate that a nested scrolling child has detected
+     * suitable conditions for a fling. Generally this means that a touch scroll has ended with a
+     * {@link VelocityTracker velocity} in the direction of scrolling that meets or exceeds
+     * the {@link ViewConfiguration#getScaledMinimumFlingVelocity() minimum fling velocity}
+     * along a scrollable axis.</p>
+     *
+     * <p>If a nested scrolling child view would normally fling but it is at the edge of
+     * its own content, it can use this method to delegate the fling to its nested scrolling
+     * parent instead. The parent may optionally consume the fling or observe a child fling.</p>
+     *
+     * @param velocityX Horizontal fling velocity in pixels per second
+     * @param velocityY Vertical fling velocity in pixels per second
+     * @param consumed true if the child consumed the fling, false otherwise
+     * @return true if the nested scrolling parent consumed or otherwise reacted to the fling
+     */
+    /**
+     * 当父控件不拦截子控件的fling,那么子控件会调用该方法将fling，传给父控件进行处理
+     *
+     * @param velocityX 水平方向上的速度 velocityX > 0  向左滑动，反之向右滑动
+     * @param velocityY 竖直方向上的速度 velocityY > 0  向上滑动，反之向下滑动
+     * @param consumed  子控件是否可以消耗该fling，也可以说是子控件是否消耗掉了该fling
+     * @return 父控件是否消耗了该fling
+     */
+    boolean dispatchNestedFling(float velocityX, float velocityY, boolean consumed);
+
 }

@@ -203,6 +203,7 @@ public final class ViewParentCompat {
      * @param type the type of input which cause this scroll event
      * @return true if this ViewParent accepts the nested scroll operation
      */
+    //当父控件实现NestedScrollingParent接口后，会走IMPL.onStartNestedScroll方法
     @SuppressWarnings("RedundantCast") // Intentionally invoking interface method.
     public static boolean onStartNestedScroll(@NonNull ViewParent parent, @NonNull View child,
             @NonNull View target, int nestedScrollAxes, int type) {
@@ -386,6 +387,7 @@ public final class ViewParentCompat {
             int dy, @NonNull int[] consumed, int type) {
         if (parent instanceof NestedScrollingParent2) {
             // First try the NestedScrollingParent2 API
+            //需要注意的是，父控件可能会将子控件传递的滑动事件全部消耗。那么子控件就没有继续可处理的事件了
             ((NestedScrollingParent2) parent).onNestedPreScroll(target, dx, dy, consumed, type);
         } else if (type == ViewCompat.TYPE_TOUCH) {
             // Else if the type is the default (touch), try the NestedScrollingParent API

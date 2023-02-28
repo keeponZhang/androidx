@@ -995,6 +995,7 @@ public class NestedScrollView extends FrameLayout implements NestedScrollingPare
                 velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
                 int initialVelocity = (int) velocityTracker.getYVelocity(mActivePointerId);
                 if ((Math.abs(initialVelocity) >= mMinimumVelocity)) {
+                    //在子控件处理fling之前，先判断父控件是否消耗
                     if (!edgeEffectFling(initialVelocity)
                             && !dispatchNestedPreFling(0, -initialVelocity)) {
                         dispatchNestedFling(0, -initialVelocity, true);
